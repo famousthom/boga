@@ -1,60 +1,41 @@
-# **Zappa** is a [CoffeeScript](http://coffeescript.org) DSL-ish interface for building web apps on the
-# [node.js](http://nodejs.org) runtime, integrating [express](http://expressjs.com), [socket.io](http://socket.io)
-# and other best-of-breed libraries.
+# **Vejove** is a fork of the nice and awesome-in-its-own-right Zappa Framework (http://www.zappajs.org). It completely 
+# rewrites the api, replaces socket.io with an implementation of the Class Adapter Pattern which provides a Base Class
+# for socket interfaces to utilize in order to work with Vejove. It also attempts something I consider interesting in 
+# applying a more Singleton development interface which is then coupled with the application of the Facade Pattern for
+# dynamic generation and efficiency. Its rather fun improving code by applying better design patterns.
 
-zappa = version: '0.3.3'
+vejove =
+  version: '0.0.1'
+  codename: 'Vejovis'
+  util: require './vejove-util'
+  views: {}
 
-codename = 'The Gumbo Variations'
+options ?= {}
 
-log = console.log
-fs = require 'fs'
-path = require 'path'
 uuid = require 'node-uuid'
 express = require 'express'
-socketio = require 'socket.io'
-jquery = fs.readFileSync(__dirname + '/../vendor/jquery-1.6.4.min.js').toString()
-sammy = fs.readFileSync(__dirname + '/../vendor/sammy-0.7.0.min.js').toString()
-uglify = require 'uglify-js'
-
-# Soft dependencies:
-jsdom = null
+# socketio = require 'socket.io'
+# uglify = require 'uglify-js'
+# jsdom = null
 
 # CoffeeScript-generated JavaScript may contain anyone of these; when we "rewrite"
 # a function (see below) though, it loses access to its parent scope, and consequently to
 # any helpers it might need. So we need to reintroduce these helpers manually inside any
 # "rewritten" function.
-coffeescript_helpers = """
-  var __slice = Array.prototype.slice;
-  var __hasProp = Object.prototype.hasOwnProperty;
-  var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
-  var __extends = function(child, parent) {
-    for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
-    function ctor() { this.constructor = child; }
-    ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype;
-    return child; };
-  var __indexOf = Array.prototype.indexOf || function(item) {
-    for (var i = 0, l = this.length; i < l; i++) {
-      if (this[i] === item) return i;
-    } return -1; };
-""".replace /\n/g, ''
 
-minify = (js) ->
-  ast = uglify.parser.parse(js)
-  ast = uglify.uglify.ast_mangle(ast)
-  ast = uglify.uglify.ast_squeeze(ast)
-  uglify.uglify.gen_code(ast)
+# TODO: MOVE TO vejove.util.getHelpers()
+# coffeescript_helpers = ""
+
+# TODO: MOVE TO vejove.util.compress() and css + gzip support
+# minify = (js) ->
 
 # Shallow copy attributes from `sources` (array of objects) to `recipient`.
 # Does NOT overwrite attributes already present in `recipient`.
-copy_data_to = (recipient, sources) ->
-  for obj in sources
-    for k, v of obj
-      recipient[k] = v unless recipient[k]
 
-# Keep inline views at the module level and namespaced by app id
-# so that the monkeypatched express can look them up.
-views = {}
-  
+# TODO: MOVE TO Object.prototype.merge()
+# copy_data_to = (recipient, sources) ->
+
+# TODO: MOVE TO vejove.lib.WebServer.View.prototype
 # Monkeypatch express to support lookup of inline templates. Such is life.
 express.View.prototype.__defineGetter__ 'exists', ->
   # Path given by zappa: /path/to/appid/foo.bar.
@@ -92,11 +73,10 @@ express.View.prototype.__defineGetter__ 'contents', ->
   p = @path.replace id + '/', ''
   fs.readFileSync p, 'utf8'
 
-# Takes in a function and builds express/socket.io apps based on the rules contained in it.
-zappa.app = (func) ->
-  context = {id: uuid(), zappa, express}
-  
-  context.root = path.dirname(module.parent.filename)
+# Takes in a function and builds a web server and/or a web socket server based upon configuration.
+vejove.app = (func) ->
+  context = {id: uuid(), vejove}
+  context.root = __dirname
 
   # Storage for user-provided stuff.
   # Views are kept at the module level.
